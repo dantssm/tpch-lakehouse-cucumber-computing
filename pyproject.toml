@@ -1,0 +1,17 @@
+[project]
+name = "tpch-lakehouse-cucumber-computing"
+version = "0.1.0"
+description = "Bronze/silver/gold lakehouse pipeline on Databricks for the TPC-H dataset (Group Assignment 1, Cucumber Computing)"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+tpch = "tpch:main"
+
+[build-system]
+requires = ["uv_build>=0.12.15,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "tpch"
