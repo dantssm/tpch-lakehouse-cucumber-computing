@@ -10,3 +10,12 @@ TABLES = ("region", "nation", "supplier", "customer", "part", "partsupp", "order
 def fq(layer: str, table: str) -> str:
     """Fully qualified table name, e.g. workspace.bronze.orders"""
     return f"{CATALOG}.{layer}.{table}"
+
+
+def ensure_schemas(spark) -> None:
+    """One-time setup: create the bronze/silver/gold schemas.
+    Needs CREATE SCHEMA on the catalog, so only the catalog owner/admin runs this,
+    once, outside the regular pipeline run. Everyone else only needs rights on
+    their own schema (see the GRANT statements in the README)."""
+    for layer in LAYERS:
+        spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOG}.{layer}")
