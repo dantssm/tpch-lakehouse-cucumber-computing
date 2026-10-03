@@ -15,3 +15,6 @@ build-backend = "uv_build"
 
 [tool.uv.build-backend]
 module-name = "tpch"
+
+[tool.databricks.environment]
+environment_version = '6'
