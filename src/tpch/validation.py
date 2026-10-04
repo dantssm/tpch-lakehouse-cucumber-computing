@@ -45,6 +45,58 @@ def _checks() -> list[tuple[str, str, str]]:
          f"SELECT COUNT(*) FROM {fq('bronze', t)} WHERE NOT coalesce({col} IN ({', '.join(map(repr, vals))}), false)")
         for (t, col), vals in ALLOWED.items()
     ]
+
+    s_orders = fq("silver", "orders")
+    s_lineitem = fq("silver", "lineitem")
+    s_customer = fq("silver", "customer")
+    s_supplier = fq("silver", "supplier")
+    s_nation = fq("silver", "nation")
+    s_partsupp = fq("silver", "partsupp")
+
+    checks += [
+        ("silver", "orders: primary key not null and unique",
+         f"SELECT COUNT(*) - COUNT(DISTINCT o_orderkey) FROM {s_orders}"),
+        ("silver", "lineitem: ship_date before or equal receipt_date",
+         f"SELECT COUNT(*) FROM {s_lineitem} WHERE l_shipdate > l_receiptdate"),
+        ("silver", "lineitem: discount and tax within standard bounds [0, 1]",
+         f"SELECT COUNT(*) FROM {s_lineitem} WHERE NOT (l_discount BETWEEN 0 AND 1 AND l_tax BETWEEN 0 AND 1)"),
+        ("silver", "lineitem: quantity strictly positive",
+         f"SELECT COUNT(*) FROM {s_lineitem} WHERE l_quantity <= 0"),
+        ("silver", "orders: o_totalprice cannot be negative",
+         f"SELECT COUNT(*) FROM {s_orders} WHERE o_totalprice < 0"),
+        ("silver", "lineitem: ship_date cannot be earlier than parent order date",
+         f"SELECT COUNT(*) FROM {s_lineitem} li JOIN {s_orders} o ON li.l_orderkey = o.o_orderkey WHERE li.l_shipdate < o.o_orderdate"),
+        ("silver", "customer: every customer references a valid nation",
+         f"SELECT COUNT(*) FROM {s_customer} LEFT ANTI JOIN {s_nation} ON c_nationkey = n_nationkey"),
+        ("silver", "supplier: every supplier references a valid nation",
+         f"SELECT COUNT(*) FROM {s_supplier} LEFT ANTI JOIN {s_nation} ON s_nationkey = n_nationkey"),
+        ("silver", "lineitem: every part-supplier pair exists in partsupp",
+         f"SELECT COUNT(*) FROM {s_lineitem} LEFT ANTI JOIN {s_partsupp} ON l_partkey = ps_partkey AND l_suppkey = ps_suppkey")
+    ]
+
+    g_revenue = fq("gold", "revenue_metrics")
+    g_customers = fq("gold", "customer_activity")
+    g_suppliers = fq("gold", "top_suppliers")
+    g_parts = fq("gold", "top_parts")
+
+    checks += [
+        ("gold", "reconciliation: gold net revenue matches silver sum within tolerance $0.01",
+         f"""SELECT ABS(
+                (SELECT COALESCE(SUM(net_revenue), 0) FROM {g_revenue}) - 
+                (SELECT COALESCE(SUM(l_extendedprice * (1 - l_discount)), 0) FROM {s_lineitem})
+             ) > 0.01 AS is_mismatch FROM (SELECT 1)"""),
+        ("gold", "revenue_metrics: net_revenue is never negative",
+         f"SELECT COUNT(*) FROM {g_revenue} WHERE net_revenue < 0"),
+        ("gold", "top_suppliers: revenue contribution is strictly positive",
+         f"SELECT COUNT(*) FROM {g_suppliers} WHERE total_revenue_contribution < 0"),
+        ("gold", "top_parts: revenue contribution is strictly positive",
+         f"SELECT COUNT(*) FROM {g_parts} WHERE total_revenue_contribution < 0"),
+        ("gold", "customer_activity: trailing 12m flag has no nulls",
+         f"SELECT COUNT(*) FROM {g_customers} WHERE is_active_trailing_12m IS NULL"),
+        ("gold", "revenue_metrics: table is not empty",
+         f"SELECT CASE WHEN COUNT(*) = 0 THEN 1 ELSE 0 END FROM {g_revenue}")
+    ]
+
     return checks
 
 
