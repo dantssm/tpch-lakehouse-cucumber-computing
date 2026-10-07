@@ -1,12 +1,3 @@
-import sys
-from pathlib import Path
-
-try:
-    _src = Path(__file__).resolve().parents[1]  # src/ directory containing the tpch package
-except NameError:
-    _src = Path("/Workspace/Users/kurylets.pn@ucu.edu.ua/tpch-lakehouse-cucumber-computing/src")
-sys.path.insert(0, str(_src))
-
 from pyspark.sql import SparkSession
 from tpch.config import CATALOG, AS_OF_DATE
 
@@ -18,11 +9,7 @@ def run(spark: SparkSession) -> None:
             o.o_orderdate AS date,
             date_trunc('week', o.o_orderdate) AS week_start,
             date_trunc('quarter', o.o_orderdate) AS quarter_start,
-            SUM(l.l_extendedprice * (1 - l.l_discount)) AS net_revenue,
-            CASE 
-                WHEN o.o_orderdate >= '1998-07-01' THEN FALSE
-                ELSE TRUE
-            END AS is_complete
+            SUM(l.l_extendedprice * (1 - l.l_discount)) AS net_revenue
         FROM {CATALOG}.silver.orders o
         JOIN {CATALOG}.silver.lineitem l ON o.o_orderkey = l.l_orderkey
         GROUP BY 1, 2, 3

@@ -5,6 +5,9 @@ SOURCE = os.getenv("TPCH_SOURCE", "samples.tpch")
 AS_OF_DATE = os.getenv("TPCH_AS_OF_DATE", "1998-08-02")
 LAYERS = ("bronze", "silver", "gold")
 TABLES = ("region", "nation", "supplier", "customer", "part", "partsupp", "orders", "lineitem")
+# Allowed ranges, taken from profiling the source (notebook 01)
+DISCOUNT_MIN, DISCOUNT_MAX = 0, 0.10
+TAX_MIN, TAX_MAX = 0, 0.08
 
 
 def fq(layer: str, table: str) -> str:
